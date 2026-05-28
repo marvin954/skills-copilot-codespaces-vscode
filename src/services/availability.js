@@ -32,11 +32,12 @@ function evaluateService(service, address) {
   const coverage = service.coverage || {};
   const zipMatch = address.zip && (coverage.zips || []).includes(address.zip);
   const cityMatch = address.city && (coverage.cities || []).includes(address.city);
+  const locationMatch = address.zip ? zipMatch : cityMatch;
   const streetKeywords = coverage.streetKeywords || [];
   const streetMatch = streetKeywords.length === 0
     || streetKeywords.some((keyword) => address.tokens.includes(keyword));
   const businessMatch = !service.requiresBusinessAddress || address.isBusinessAddress;
-  const available = Boolean((zipMatch || cityMatch) && streetMatch && businessMatch);
+  const available = Boolean(locationMatch && streetMatch && businessMatch);
   const matchReasons = [];
 
   if (zipMatch) {
