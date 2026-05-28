@@ -4,6 +4,7 @@
   "description": "A paper-trading AI agent with risk controls and a CLI runner.",
   "main": "src/index.js",
   "scripts": {
+    "dashboard": "node src/index.js --serve --demo",
     "start": "node src/index.js --demo",
     "test": "node --test"
   },
