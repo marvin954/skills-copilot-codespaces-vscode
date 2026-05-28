@@ -49,10 +49,10 @@ node src/index.js --market-data examples/market-snapshot.json --execute --positi
 ```json
 {
   "symbol": "AAPL",
-  "sentimentScore": 0.18,
+  "sentimentScore": 0.9,
   "aiSignal": {
     "direction": "bullish",
-    "confidence": 0.64,
+    "confidence": 1,
     "rationale": "Optional model output or human-reviewed signal."
   },
   "candles": [

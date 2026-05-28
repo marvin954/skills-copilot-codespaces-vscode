@@ -1,9 +1,9 @@
 {
   "symbol": "AAPL",
-  "sentimentScore": 0.18,
+  "sentimentScore": 0.9,
   "aiSignal": {
     "direction": "bullish",
-    "confidence": 0.64,
+    "confidence": 1,
     "rationale": "Example model signal favors continuation after a steady uptrend."
   },
   "candles": [
