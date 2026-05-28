@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
-const path = require('node:path');
-const { TradingAgent } = require('./agents/tradingAgent');
-const { PaperBroker } = require('./services/paperBroker');
-const { createDemoSnapshot, loadMarketSnapshot } = require('./services/marketData');
+const { findAvailability } = require('./services/availability');
+const { createCableFinderServer } = require('./server');
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
@@ -14,97 +12,38 @@ async function main() {
     return;
   }
 
-  const snapshot = options.demo
-    ? createDemoSnapshot(options.symbol)
-    : await loadMarketSnapshot(path.resolve(options.marketData));
+  if (options.address) {
+    process.stdout.write(`${JSON.stringify(findAvailability(options.address), null, 2)}\n`);
+    return;
+  }
 
-  const broker = new PaperBroker({
-    startingCash: options.cash,
-    positions: options.positions
-  });
-  const agent = new TradingAgent({
-    broker,
-    config: {
-      mode: 'paper',
-      strategy: {
-        minConfidence: options.minConfidence
-      },
-      risk: {
-        maxPositionPercent: options.maxPositionPercent,
-        maxOrderNotional: options.maxOrderNotional
-      }
-    }
-  });
-
-  const portfolio = await broker.getPortfolio();
-  const result = options.execute
-    ? await agent.run(snapshot, portfolio)
-    : { decision: agent.analyze(snapshot, portfolio), execution: null };
-  const finalPortfolio = await broker.getPortfolio();
-
-  process.stdout.write(`${JSON.stringify({
-    mode: options.execute ? 'paper-execution' : 'analysis-only',
-    input: {
-      symbol: snapshot.symbol,
-      candles: snapshot.candles.length
-    },
-    ...result,
-    portfolio: finalPortfolio
-  }, null, 2)}\n`);
+  await listen(options);
 }
 
 function parseArgs(args) {
   const options = {
-    cash: Number(process.env.TRADING_AGENT_STARTING_CASH || 10000),
-    demo: false,
-    execute: false,
-    marketData: process.env.MARKET_DATA_FILE,
-    maxOrderNotional: Number(process.env.TRADING_AGENT_MAX_ORDER_NOTIONAL || 2500),
-    maxPositionPercent: Number(process.env.TRADING_AGENT_MAX_POSITION_PERCENT || 0.2),
-    minConfidence: Number(process.env.TRADING_AGENT_MIN_CONFIDENCE || 0.35),
-    positions: {},
-    symbol: process.env.TRADING_AGENT_SYMBOL || 'DEMO'
+    address: process.env.CABLE_FINDER_ADDRESS || '',
+    host: process.env.HOST || '127.0.0.1',
+    port: Number(process.env.PORT || 3000)
   };
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     switch (arg) {
-      case '--cash':
-        options.cash = Number(readValue(args, index, arg));
+      case '--address':
+        options.address = readValue(args, index, arg);
         index += 1;
-        break;
-      case '--demo':
-        options.demo = true;
-        break;
-      case '--execute':
-        options.execute = true;
         break;
       case '--help':
       case '-h':
         options.help = true;
         break;
-      case '--market-data':
-        options.marketData = readValue(args, index, arg);
+      case '--host':
+        options.host = readValue(args, index, arg);
         index += 1;
         break;
-      case '--max-order-notional':
-        options.maxOrderNotional = Number(readValue(args, index, arg));
-        index += 1;
-        break;
-      case '--max-position-percent':
-        options.maxPositionPercent = Number(readValue(args, index, arg));
-        index += 1;
-        break;
-      case '--min-confidence':
-        options.minConfidence = Number(readValue(args, index, arg));
-        index += 1;
-        break;
-      case '--position':
-        addPosition(options.positions, readValue(args, index, arg));
-        index += 1;
-        break;
-      case '--symbol':
-        options.symbol = readValue(args, index, arg).toUpperCase();
+      case '--port':
+        options.port = Number(readValue(args, index, arg));
         index += 1;
         break;
       default:
@@ -112,8 +51,8 @@ function parseArgs(args) {
     }
   }
 
-  if (!options.demo && !options.marketData && !options.help) {
-    throw new Error('Provide --demo or --market-data <snapshot.json>.');
+  if (!Number.isInteger(options.port) || options.port <= 0) {
+    throw new Error('--port must be a positive integer.');
   }
 
   return options;
@@ -128,39 +67,32 @@ function readValue(args, index, flag) {
   return value;
 }
 
-function addPosition(positions, value) {
-  const [symbol, quantity, averagePrice] = value.split(':');
-  if (!symbol || !quantity || !averagePrice) {
-    throw new Error('--position must use SYMBOL:QUANTITY:AVERAGE_PRICE format.');
-  }
+function listen(options) {
+  const server = createCableFinderServer();
 
-  positions[symbol.toUpperCase()] = {
-    symbol: symbol.toUpperCase(),
-    quantity: Number(quantity),
-    averagePrice: Number(averagePrice),
-    markPrice: Number(averagePrice)
-  };
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(options.port, options.host, () => {
+      const address = server.address();
+      process.stdout.write(`Cable Finder is running at http://${address.address}:${address.port}\n`);
+      resolve(server);
+    });
+  });
 }
 
 function printHelp() {
-  process.stdout.write(`Trading AI Agent
+  process.stdout.write(`Cable Finder
 
 Usage:
-  node src/index.js --demo [--execute]
-  node src/index.js --market-data ./examples/market-snapshot.json [--execute]
+  npm start
+  node src/index.js --address "123 Main St, Springfield, IL 62704"
 
 Options:
-  --cash <amount>                 Starting paper cash. Default: 10000
-  --demo                          Use bundled demo market data.
-  --execute                       Fill the suggested order in the paper broker.
-  --market-data <file>            JSON market snapshot file.
-  --max-order-notional <amount>   Maximum paper order size. Default: 2500
-  --max-position-percent <ratio>  Maximum equity allocation per symbol. Default: 0.2
-  --min-confidence <ratio>        Minimum signal confidence to trade. Default: 0.35
-  --position SYMBOL:QTY:AVG       Seed a paper position, e.g. AAPL:10:182.50
-  --symbol <symbol>               Demo symbol. Default: DEMO
+  --address <address>  Print matching services as JSON instead of starting the web app.
+  --host <host>        Host for the web app. Default: 127.0.0.1
+  --port <port>        Port for the web app. Default: 3000
 
-This CLI is paper-trading only and does not connect to a live broker.
+Open the web app and enter a customer address to view available internet services.
 `);
 }
 
@@ -173,5 +105,6 @@ if (require.main === module) {
 
 module.exports = {
   parseArgs,
+  listen,
   main
 };
