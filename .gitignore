@@ -32,6 +32,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+.trading-agent/
 
 # OS generated files #
 ######################

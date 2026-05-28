@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 
-const path = require('node:path');
-const { TradingAgent } = require('./agents/tradingAgent');
-const { PaperBroker } = require('./services/paperBroker');
-const { createDemoSnapshot, loadMarketSnapshot } = require('./services/marketData');
+const { TradingRuntime } = require('./services/tradingRuntime');
+const { JsonTradeStore } = require('./services/tradeStore');
+const { createDashboardServer, listen } = require('./web/server');
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
@@ -14,42 +13,38 @@ async function main() {
     return;
   }
 
-  const snapshot = options.demo
-    ? createDemoSnapshot(options.symbol)
-    : await loadMarketSnapshot(path.resolve(options.marketData));
+  const store = new JsonTradeStore(options.stateFile);
+  const runtime = new TradingRuntime({ ...options, store });
 
-  const broker = new PaperBroker({
-    startingCash: options.cash,
-    positions: options.positions
-  });
-  const agent = new TradingAgent({
-    broker,
-    config: {
-      mode: 'paper',
-      strategy: {
-        minConfidence: options.minConfidence
-      },
-      risk: {
-        maxPositionPercent: options.maxPositionPercent,
-        maxOrderNotional: options.maxOrderNotional
-      }
-    }
-  });
+  if (options.resetState) {
+    const state = await store.reset();
+    process.stdout.write(`${JSON.stringify({ stateFile: store.filePath, state }, null, 2)}\n`);
+    return;
+  }
 
-  const portfolio = await broker.getPortfolio();
-  const result = options.execute
-    ? await agent.run(snapshot, portfolio)
-    : { decision: agent.analyze(snapshot, portfolio), execution: null };
-  const finalPortfolio = await broker.getPortfolio();
+  if (options.history) {
+    const state = await runtime.getState();
+    process.stdout.write(`${JSON.stringify({ stateFile: store.filePath, ...state }, null, 2)}\n`);
+    return;
+  }
+
+  if (options.serve) {
+    const server = createDashboardServer(runtime);
+    await listen(server, { host: options.host, port: options.port });
+    process.stdout.write(`Trading AI Agent dashboard: http://${options.host}:${options.port}\n`);
+    process.stdout.write(`State file: ${store.filePath}\n`);
+    return;
+  }
+
+  const run = await runtime.runOnce({ execute: options.execute });
+  const state = await runtime.getState();
 
   process.stdout.write(`${JSON.stringify({
-    mode: options.execute ? 'paper-execution' : 'analysis-only',
-    input: {
-      symbol: snapshot.symbol,
-      candles: snapshot.candles.length
-    },
-    ...result,
-    portfolio: finalPortfolio
+    stateFile: store.filePath,
+    run,
+    portfolio: state.portfolio,
+    tradeCount: state.trades.length,
+    runCount: state.runs.length
   }, null, 2)}\n`);
 }
 
@@ -58,11 +53,18 @@ function parseArgs(args) {
     cash: Number(process.env.TRADING_AGENT_STARTING_CASH || 10000),
     demo: false,
     execute: false,
+    history: false,
+    host: process.env.TRADING_AGENT_HOST || '127.0.0.1',
     marketData: process.env.MARKET_DATA_FILE,
     maxOrderNotional: Number(process.env.TRADING_AGENT_MAX_ORDER_NOTIONAL || 2500),
     maxPositionPercent: Number(process.env.TRADING_AGENT_MAX_POSITION_PERCENT || 0.2),
     minConfidence: Number(process.env.TRADING_AGENT_MIN_CONFIDENCE || 0.35),
+    port: Number(process.env.TRADING_AGENT_PORT || 3000),
     positions: {},
+    resetState: false,
+    scheduleMs: Number(process.env.TRADING_AGENT_SCHEDULE_MS || 60000),
+    serve: false,
+    stateFile: process.env.TRADING_AGENT_STATE_FILE,
     symbol: process.env.TRADING_AGENT_SYMBOL || 'DEMO'
   };
 
@@ -83,6 +85,13 @@ function parseArgs(args) {
       case '-h':
         options.help = true;
         break;
+      case '--history':
+        options.history = true;
+        break;
+      case '--host':
+        options.host = readValue(args, index, arg);
+        index += 1;
+        break;
       case '--market-data':
         options.marketData = readValue(args, index, arg);
         index += 1;
@@ -99,8 +108,26 @@ function parseArgs(args) {
         options.minConfidence = Number(readValue(args, index, arg));
         index += 1;
         break;
+      case '--port':
+        options.port = Number(readValue(args, index, arg));
+        index += 1;
+        break;
       case '--position':
         addPosition(options.positions, readValue(args, index, arg));
+        index += 1;
+        break;
+      case '--reset-state':
+        options.resetState = true;
+        break;
+      case '--schedule-ms':
+        options.scheduleMs = Number(readValue(args, index, arg));
+        index += 1;
+        break;
+      case '--serve':
+        options.serve = true;
+        break;
+      case '--state-file':
+        options.stateFile = readValue(args, index, arg);
         index += 1;
         break;
       case '--symbol':
@@ -112,8 +139,12 @@ function parseArgs(args) {
     }
   }
 
-  if (!options.demo && !options.marketData && !options.help) {
-    throw new Error('Provide --demo or --market-data <snapshot.json>.');
+  if (options.serve && !options.marketData) {
+    options.demo = true;
+  }
+
+  if (!options.demo && !options.marketData && !options.help && !options.history && !options.resetState) {
+    throw new Error('Provide --demo, --serve, --history, or --market-data <snapshot.json>.');
   }
 
   return options;
@@ -148,17 +179,33 @@ function printHelp() {
 Usage:
   node src/index.js --demo [--execute]
   node src/index.js --market-data ./examples/market-snapshot.json [--execute]
+  node src/index.js --serve --demo
+  node src/index.js --history
 
 Options:
-  --cash <amount>                 Starting paper cash. Default: 10000
+  --cash <amount>                 Starting paper cash for a new state file. Default: 10000
   --demo                          Use bundled demo market data.
   --execute                       Fill the suggested order in the paper broker.
+  --history                       Print persisted portfolio, trades, and runs.
+  --host <host>                   Dashboard host. Default: 127.0.0.1
   --market-data <file>            JSON market snapshot file.
   --max-order-notional <amount>   Maximum paper order size. Default: 2500
   --max-position-percent <ratio>  Maximum equity allocation per symbol. Default: 0.2
   --min-confidence <ratio>        Minimum signal confidence to trade. Default: 0.35
-  --position SYMBOL:QTY:AVG       Seed a paper position, e.g. AAPL:10:182.50
+  --port <port>                   Dashboard port. Default: 3000
+  --position SYMBOL:QTY:AVG       Seed or override a paper position for the next run.
+  --reset-state                   Reset the persistent state file.
+  --schedule-ms <milliseconds>    Scheduler interval. Default: 60000
+  --serve                         Start the web dashboard and API.
+  --state-file <file>             Persistent state file. Default: .trading-agent/state.json
   --symbol <symbol>               Demo symbol. Default: DEMO
+
+Dashboard API:
+  GET  /api/status
+  GET  /api/history
+  POST /api/run
+  POST /api/scheduler/start
+  POST /api/scheduler/stop
 
 This CLI is paper-trading only and does not connect to a live broker.
 `);

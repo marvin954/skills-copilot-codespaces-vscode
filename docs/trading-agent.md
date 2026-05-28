@@ -44,6 +44,76 @@ Seed an existing paper position to test exits:
 node src/index.js --market-data examples/market-snapshot.json --execute --position AAPL:10:240
 ```
 
+
+## Persistent trade history
+
+Every CLI or dashboard run writes to a local JSON state file. By default it is stored at:
+
+```text
+.trading-agent/state.json
+```
+
+The state file contains:
+
+- current paper portfolio
+- filled paper trades
+- run history, including hold decisions
+- scheduler status
+
+View the stored history:
+
+```bash
+node src/index.js --history
+```
+
+Use a different state file:
+
+```bash
+node src/index.js --demo --execute --state-file ./tmp/agent-state.json
+```
+
+Reset local paper state:
+
+```bash
+node src/index.js --reset-state
+```
+
+## Dashboard and scheduler
+
+Start the web UI:
+
+```bash
+npm run dashboard
+```
+
+Then open:
+
+```text
+http://127.0.0.1:3000
+```
+
+From the dashboard you can:
+
+- run the agent manually
+- choose analysis-only or paper execution mode
+- start and stop a scheduler
+- inspect positions, trades, and run history
+
+The same controls are available as JSON endpoints:
+
+```bash
+curl http://127.0.0.1:3000/api/status
+curl -X POST http://127.0.0.1:3000/api/run \
+  -H 'content-type: application/json' \
+  -d '{"execute":true}'
+curl -X POST http://127.0.0.1:3000/api/scheduler/start \
+  -H 'content-type: application/json' \
+  -d '{"execute":true,"scheduleMs":60000}'
+curl -X POST http://127.0.0.1:3000/api/scheduler/stop
+```
+
+The scheduler is intentionally in-process. Keep the Node process running for scheduled paper runs to continue.
+
 ## Market snapshot format
 
 ```json
