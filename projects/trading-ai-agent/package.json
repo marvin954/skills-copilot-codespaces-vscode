@@ -1,0 +1,16 @@
+{
+  "name": "trading-ai-agent",
+  "version": "1.0.0",
+  "description": "A paper-trading AI agent with risk controls and a CLI runner.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js --demo",
+    "test": "node --test"
+  },
+  "keywords": [
+    "trading",
+    "ai-agent",
+    "paper-trading"
+  ],
+  "license": "MIT"
+}
