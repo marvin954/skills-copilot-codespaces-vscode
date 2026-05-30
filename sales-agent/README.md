@@ -51,9 +51,17 @@ sales-agent/
 | Manager agent | Performance reports & optimization |
 | Compliance | CAN-SPAM, TCPA, opt-out, rate limits, audit logs |
 
-## Documentation
+## Documentation (read before building)
 
-See [`docs/`](./docs/) for architecture, database schema, API reference, agent workflows, deployment, and roadmaps.
+| Doc | Description |
+|-----|-------------|
+| [**TECHNICAL_ARCHITECTURE.md**](./docs/TECHNICAL_ARCHITECTURE.md) | Complete system design — agents, DB, API, auth, queues, security, costs |
+| [**IMPLEMENTATION_PLAN.md**](./docs/IMPLEMENTATION_PLAN.md) | 30 / 60 / 90–120 day execution plan |
+| [PRODUCT_BRIEF.md](./docs/PRODUCT_BRIEF.md) | Product scope (separate from Real Estate tool) |
+
+Additional: [DATABASE](./docs/DATABASE.md), [API](./docs/API.md), [DEPLOYMENT](./docs/DEPLOYMENT.md), [MVP_ROADMAP](./docs/MVP_ROADMAP.md).
+
+**This is a separate SaaS product** — not the Real Estate Parcel Research Tool.
 
 ## License
 
