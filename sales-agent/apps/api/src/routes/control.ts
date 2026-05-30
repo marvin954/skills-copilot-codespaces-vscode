@@ -5,6 +5,10 @@ import { getDefaultOrganizationId } from "../lib/org.js";
 import { runLeadPipeline, runDiscoverSync } from "../workflows/orchestrator.js";
 import { ManagerAgent } from "../agents/managerAgent.js";
 import { enqueueWorkflow } from "../workflows/orchestrator.js";
+import {
+  isGooglePlacesConfigured,
+  shouldUseGooglePlacesMock,
+} from "../services/googlePlaces.js";
 
 export const controlRouter = Router();
 
@@ -45,6 +49,14 @@ controlRouter.get("/status", async (_req, res, next) => {
   }
 });
 
+controlRouter.get("/google-places/status", (_req, res) => {
+  res.json({
+    configured: isGooglePlacesConfigured(),
+    mockMode: shouldUseGooglePlacesMock(),
+    hint: "Enable Places API (New) + Geocoding API in Google Cloud. See docs/GOOGLE_MAPS_SETUP.md",
+  });
+});
+
 controlRouter.get("/runs", async (req, res, next) => {
   try {
     const orgId = await getDefaultOrganizationId();
@@ -74,6 +86,8 @@ controlRouter.post("/discover", async (req, res, next) => {
           ])
           .default("GOOGLE_MAPS"),
         query: z.string().min(2),
+        location: z.string().optional(),
+        industry: z.string().optional(),
         limit: z.number().int().min(1).max(20).optional(),
         mode: z.enum(["sync", "async"]).default("sync"),
       })
@@ -87,6 +101,9 @@ controlRouter.post("/discover", async (req, res, next) => {
         organizationId: orgId,
         source: body.source,
         query: body.query,
+        location: body.location,
+        industry: body.industry,
+        limit: body.limit,
       });
       return res.status(202).json({
         ok: true,
@@ -98,7 +115,8 @@ controlRouter.post("/discover", async (req, res, next) => {
       orgId,
       body.source,
       body.query,
-      body.limit ?? 5
+      body.limit ?? 5,
+      { location: body.location, industry: body.industry }
     );
     res.json({ ok: true, ...result });
   } catch (e) {

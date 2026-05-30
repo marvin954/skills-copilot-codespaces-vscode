@@ -52,11 +52,20 @@ leadsRouter.post("/discover", async (req, res, next) => {
           "SOCIAL",
         ]),
         query: z.string().min(2),
+        location: z.string().optional(),
+        industry: z.string().optional(),
+        limit: z.number().int().min(1).max(20).optional(),
       })
       .parse(req.body);
 
     const orgId = await getDefaultOrganizationId();
-    const result = await runDiscoverSync(orgId, body.source, body.query, 5);
+    const result = await runDiscoverSync(
+      orgId,
+      body.source,
+      body.query,
+      body.limit ?? 5,
+      { location: body.location, industry: body.industry }
+    );
     res.json({ ok: true, ...result });
   } catch (e) {
     next(e);

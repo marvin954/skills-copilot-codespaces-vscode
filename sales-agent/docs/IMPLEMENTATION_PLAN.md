@@ -27,7 +27,7 @@ Build in three horizons on a single architecture so Phase 2/3 are **feature flag
 | 1–2 | Finalize architecture sign-off | This doc + `TECHNICAL_ARCHITECTURE.md` approved |
 | 2–3 | Production Postgres + Redis (Neon + Upstash) | Env templates, migrations CI |
 | 3–4 | Deploy skeleton: Vercel (web) + Railway (API) | Health checks green |
-| 4–5 | **Lead Finder** — Google Places API adapter (real) | 50 leads from Maps query |
+| 4–5 | **Lead Finder** — Google Places API adapter (real) ✅ | 50 leads from Maps query — see [GOOGLE_MAPS_SETUP.md](./GOOGLE_MAPS_SETUP.md) |
 | 5–7 | Enrichment: website URL, email pattern, Apollo trial optional | Contacts on leads |
 
 **Exit criteria:** `POST /api/control/discover` returns real businesses with websites.

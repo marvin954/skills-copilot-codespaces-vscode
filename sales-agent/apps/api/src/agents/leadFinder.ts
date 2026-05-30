@@ -1,6 +1,12 @@
 import { prisma, type LeadSource } from "@sales-agent/database";
 import type { AgentContext, AgentResult, LeadCandidate } from "@sales-agent/shared";
 import { BaseAgent } from "./base.js";
+import {
+  buildPlacesTextQuery,
+  geocodeLocation,
+  searchGooglePlaces,
+  shouldUseGooglePlacesMock,
+} from "../services/googlePlaces.js";
 
 export interface LeadFinderInput {
   source: LeadSource;
@@ -19,8 +25,23 @@ export class LeadFinderAgent extends BaseAgent<LeadFinderInput, { leads: string[
   ): Promise<AgentResult<{ leads: string[] }>> {
     const candidates = await this.discover(input);
     const created: string[] = [];
+    let skipped = 0;
 
     for (const c of candidates.slice(0, input.limit ?? 20)) {
+      const placeId = c.metadata?.googlePlaceId as string | undefined;
+      if (placeId) {
+        const dup = await prisma.lead.findFirst({
+          where: {
+            organizationId: ctx.organizationId,
+            metadata: { path: ["googlePlaceId"], equals: placeId },
+          },
+        });
+        if (dup) {
+          skipped++;
+          continue;
+        }
+      }
+
       const lead = await prisma.lead.create({
         data: {
           organizationId: ctx.organizationId,
@@ -57,7 +78,11 @@ export class LeadFinderAgent extends BaseAgent<LeadFinderInput, { leads: string[
     return {
       success: true,
       data: { leads: created },
-      metrics: { discovered: candidates.length, saved: created.length },
+      metrics: {
+        discovered: candidates.length,
+        saved: created.length,
+        skippedDuplicates: skipped,
+      },
     };
   }
 
@@ -76,15 +101,47 @@ export class LeadFinderAgent extends BaseAgent<LeadFinderInput, { leads: string[
     }
   }
 
-  /** Adapter: wire GOOGLE_MAPS_API_KEY for live Places API */
   private async searchGoogleMaps(
     input: LeadFinderInput
   ): Promise<LeadCandidate[]> {
-    if (!process.env.GOOGLE_MAPS_API_KEY) {
+    if (shouldUseGooglePlacesMock()) {
+      console.warn(
+        "[LeadFinder] GOOGLE_MAPS_API_KEY not set (or GOOGLE_PLACES_USE_MOCK=true) — using mock data"
+      );
       return this.mockCandidates(input, "google_maps");
     }
-    // Production: Google Places Text Search API
-    return this.mockCandidates(input, "google_maps");
+
+    const textQuery = buildPlacesTextQuery(input.query, input.location);
+    const maxResults = Math.min(input.limit ?? 10, 20);
+
+    let locationBias: { latitude: number; longitude: number } | undefined;
+    if (input.location) {
+      const geo = await geocodeLocation(input.location);
+      if (geo) locationBias = geo;
+    }
+
+    const places = await searchGooglePlaces({
+      textQuery,
+      maxResults,
+      locationBias,
+    });
+
+    return places.map((p) => ({
+      companyName: p.companyName,
+      website: p.website,
+      phone: p.phone,
+      industry: p.industry ?? input.industry,
+      location: p.address || input.location,
+      source: "google_maps",
+      metadata: {
+        googlePlaceId: p.placeId,
+        googleMapsUri: p.googleMapsUri,
+        placeTypes: p.types,
+        businessStatus: p.businessStatus,
+        searchQuery: textQuery,
+        dataSource: "google_places_api",
+      },
+    }));
   }
 
   private async searchLinkedIn(
@@ -116,6 +173,7 @@ export class LeadFinderAgent extends BaseAgent<LeadFinderInput, { leads: string[
       employeeCount: 15 + i * 10,
       location: input.location ?? "United States",
       source: sourceLabel,
+      metadata: { dataSource: "mock" },
       contacts: [
         {
           name: `Alex Manager ${i + 1}`,

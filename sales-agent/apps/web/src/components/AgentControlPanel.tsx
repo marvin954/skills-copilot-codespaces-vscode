@@ -33,14 +33,22 @@ const SOURCES = [
   { value: "SOCIAL", label: "Social media" },
 ] as const;
 
+interface GooglePlacesStatus {
+  configured: boolean;
+  mockMode: boolean;
+  hint?: string;
+}
+
 export function AgentControlPanel() {
-  const [query, setQuery] = useState("dental offices Austin TX");
+  const [query, setQuery] = useState("dental offices");
+  const [location, setLocation] = useState("Austin, TX");
   const [source, setSource] = useState<string>("GOOGLE_MAPS");
-  const [limit, setLimit] = useState(5);
+  const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [runs, setRuns] = useState<AgentRun[]>([]);
   const [leadCount, setLeadCount] = useState(0);
+  const [mapsStatus, setMapsStatus] = useState<GooglePlacesStatus | null>(null);
 
   const appendLog = useCallback((msg: string) => {
     setLog((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 30));
@@ -58,16 +66,21 @@ export function AgentControlPanel() {
 
   useEffect(() => {
     refreshStatus();
+    fetchApi<GooglePlacesStatus>("/api/control/google-places/status")
+      .then(setMapsStatus)
+      .catch(() => setMapsStatus(null));
     const id = setInterval(refreshStatus, 15000);
     return () => clearInterval(id);
   }, [refreshStatus]);
 
   async function runDiscover(mode: "sync" | "async") {
     setLoading("discover");
-    appendLog(`Discovering leads: "${query}" via ${source} (${mode})…`);
+    const fullQuery = location ? `${query} (${location})` : query;
+    appendLog(`Discovering leads: "${fullQuery}" via ${source} (${mode})…`);
     try {
       const result = await postApi<DiscoverResult>("/api/control/discover", {
         query,
+        location: location || undefined,
         source,
         limit,
         mode,
@@ -125,6 +138,16 @@ export function AgentControlPanel() {
           <p className="mt-1 text-sm text-slate-400">
             Run agents from the dashboard — {leadCount} leads in CRM
           </p>
+          {source === "GOOGLE_MAPS" && mapsStatus && (
+            <p
+              className={`mt-2 text-xs ${mapsStatus.mockMode ? "text-amber-400" : "text-emerald-400"}`}
+            >
+              Google Maps:{" "}
+              {mapsStatus.mockMode
+                ? "mock data (set GOOGLE_MAPS_API_KEY in .env)"
+                : "live Places API"}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -137,13 +160,22 @@ export function AgentControlPanel() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
-          <label className="block text-sm text-slate-400">Search query</label>
+          <label className="block text-sm text-slate-400">Business type / search query</label>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
-            placeholder="e.g. logistics companies Dallas"
+            placeholder="e.g. HVAC companies, dental offices"
+          />
+
+          <label className="block text-sm text-slate-400">Location (city, state or region)</label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+            placeholder="e.g. Austin, TX"
           />
 
           <div className="grid grid-cols-2 gap-4">

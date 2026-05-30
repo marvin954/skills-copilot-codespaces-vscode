@@ -26,7 +26,8 @@ async function processWorkflow(job: Job<WorkflowJob>) {
         data.organizationId,
         data.source as "GOOGLE_MAPS",
         data.query!,
-        5
+        data.limit ?? 5,
+        { location: data.location, industry: data.industry }
       );
       break;
     case "close_and_onboard":

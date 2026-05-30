@@ -14,7 +14,15 @@ export const workflowQueue = createQueue(QUEUE_NAMES.WORKFLOW);
 
 export type WorkflowJob =
   | { type: "full_pipeline"; organizationId: string; leadId: string }
-  | { type: "discover"; organizationId: string; source: string; query: string }
+  | {
+      type: "discover";
+      organizationId: string;
+      source: string;
+      query: string;
+      location?: string;
+      industry?: string;
+      limit?: number;
+    }
   | { type: "close_and_onboard"; organizationId: string; leadId: string; amount: number };
 
 export async function enqueueWorkflow(job: WorkflowJob) {
@@ -69,12 +77,13 @@ export async function runDiscoverSync(
   organizationId: string,
   source: "GOOGLE_MAPS" | "LINKEDIN" | "WEBSITE_SCRAPE" | "DIRECTORY" | "SOCIAL",
   query: string,
-  limit = 5
+  limit = 5,
+  options?: { location?: string; industry?: string }
 ) {
   const finder = new LeadFinderAgent();
   const result = await finder.run(
     { organizationId },
-    { source, query, limit }
+    { source, query, limit, location: options?.location, industry: options?.industry }
   );
 
   const pipelineResults: Array<{ leadId: string; score?: number; error?: string }> = [];
