@@ -1,0 +1,60 @@
+# Autonomous SaaS Sales Agent
+
+Production-ready, multi-agent B2B sales system for **AI Automation Services**, **AI Call Centers**, **AI Chatbots**, **Lead Generation Systems**, and **Business Automation Solutions** — optimized for SMB outreach (5–200 employees).
+
+This project lives in its own folder so it stays separate from other agents in the repository (e.g. the trading agent at the repo root).
+
+## Quick start
+
+```bash
+cd sales-agent
+cp .env.example .env
+docker compose up -d
+npm install
+npm run db:push
+npm run db:seed
+npm run dev:api    # terminal 1
+npm run worker     # terminal 2
+npm run dev:web    # terminal 3
+```
+
+- **API:** http://localhost:4000  
+- **Dashboard:** http://localhost:3000  
+
+## Folder structure
+
+```
+sales-agent/
+├── apps/
+│   ├── api/          # Express API + agents + workers
+│   └── web/          # Next.js CRM dashboard
+├── packages/
+│   ├── database/     # Prisma schema & client
+│   └── shared/       # Types, scoring, constants
+├── docs/             # Architecture, API, deployment, roadmaps
+├── docker-compose.yml
+└── package.json
+```
+
+## Capabilities
+
+| Module | Description |
+|--------|-------------|
+| Lead generation | Google Maps, LinkedIn, websites, directories (adapter pattern) |
+| Lead scoring | 0–100 score with weighted breakdown |
+| Research agent | Pain points, opportunities, personalized angles |
+| Multi-channel outreach | Email (Resend), SMS (Twilio), LinkedIn, Voice (Vapi/Bland/Retell) |
+| Conversation AI | Memory, objections, pricing, negotiation limits |
+| Closing | Stripe checkout, deal pipeline |
+| Onboarding | Post-payment welcome & checklist |
+| CRM | Leads, contacts, deals, conversations, metrics |
+| Manager agent | Performance reports & optimization |
+| Compliance | CAN-SPAM, TCPA, opt-out, rate limits, audit logs |
+
+## Documentation
+
+See [`docs/`](./docs/) for architecture, database schema, API reference, agent workflows, deployment, and roadmaps.
+
+## License
+
+MIT
