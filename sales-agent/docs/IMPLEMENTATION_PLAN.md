@@ -28,7 +28,7 @@ Build in three horizons on a single architecture so Phase 2/3 are **feature flag
 | 2–3 | Production Postgres + Redis (Neon + Upstash) | Env templates, migrations CI |
 | 3–4 | Deploy skeleton: Vercel (web) + Railway (API) | Health checks green |
 | 4–5 | **Lead Finder** — Google Places API adapter (real) ✅ | 50 leads from Maps query — see [GOOGLE_MAPS_SETUP.md](./GOOGLE_MAPS_SETUP.md) |
-| 5–7 | Enrichment: website URL, email pattern, Apollo trial optional | Contacts on leads |
+| 5–7 | Enrichment: website scrape + Apollo ✅ | Contacts on leads — [EMAIL_ENRICHMENT.md](./EMAIL_ENRICHMENT.md) |
 
 **Exit criteria:** `POST /api/control/discover` returns real businesses with websites.
 
@@ -203,7 +203,7 @@ flowchart LR
 
 If starting from current prototype in `sales-agent/`:
 
-1. **Day 1:** Add `GOOGLE_MAPS_API_KEY` + real Places adapter  
+1. **Day 1:** Add `GOOGLE_MAPS_API_KEY` + real Places adapter ✅ (`services/googlePlaces.ts`)  
 2. **Day 2:** Add `RESEND_API_KEY` + verify domain  
 3. **Day 3:** Add `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`  
 4. **Day 4–7:** Follow-up queue + Resend inbound webhook  

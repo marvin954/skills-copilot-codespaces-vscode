@@ -7,6 +7,10 @@ import {
   searchGooglePlaces,
   shouldUseGooglePlacesMock,
 } from "../services/googlePlaces.js";
+import {
+  enrichLeadEmail,
+  applyEnrichmentToLead,
+} from "../services/emailEnrichment/index.js";
 
 export interface LeadFinderInput {
   source: LeadSource;
@@ -26,6 +30,7 @@ export class LeadFinderAgent extends BaseAgent<LeadFinderInput, { leads: string[
     const candidates = await this.discover(input);
     const created: string[] = [];
     let skipped = 0;
+    let emailsEnriched = 0;
 
     for (const c of candidates.slice(0, input.limit ?? 20)) {
       const placeId = c.metadata?.googlePlaceId as string | undefined;
@@ -72,6 +77,28 @@ export class LeadFinderAgent extends BaseAgent<LeadFinderInput, { leads: string[
         });
       }
 
+      if (!lead.email && (lead.website || lead.companyName)) {
+        try {
+          const enrichment = await enrichLeadEmail({
+            leadId: lead.id,
+            companyName: lead.companyName,
+            website: lead.website,
+            email: lead.email,
+            phone: lead.phone,
+            location: lead.location,
+          });
+          if (enrichment.email) {
+            await applyEnrichmentToLead(lead.id, enrichment);
+            emailsEnriched++;
+          }
+        } catch (err) {
+          console.warn(
+            `[LeadFinder] Email enrichment failed for ${lead.id}:`,
+            err instanceof Error ? err.message : err
+          );
+        }
+      }
+
       created.push(lead.id);
     }
 
@@ -82,6 +109,7 @@ export class LeadFinderAgent extends BaseAgent<LeadFinderInput, { leads: string[
         discovered: candidates.length,
         saved: created.length,
         skippedDuplicates: skipped,
+        emailsEnriched,
       },
     };
   }

@@ -20,9 +20,15 @@ interface ControlStatus {
 interface DiscoverResult {
   ok: boolean;
   saved?: number;
+  emailsEnriched?: number;
   leadIds?: string[];
   pipelines?: Array<{ leadId: string; score?: number; error?: string }>;
   message?: string;
+}
+
+interface EnrichmentStatus {
+  websiteScrape: boolean;
+  apollo: boolean;
 }
 
 const SOURCES = [
@@ -49,6 +55,7 @@ export function AgentControlPanel() {
   const [runs, setRuns] = useState<AgentRun[]>([]);
   const [leadCount, setLeadCount] = useState(0);
   const [mapsStatus, setMapsStatus] = useState<GooglePlacesStatus | null>(null);
+  const [enrichStatus, setEnrichStatus] = useState<EnrichmentStatus | null>(null);
 
   const appendLog = useCallback((msg: string) => {
     setLog((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 30));
@@ -69,6 +76,9 @@ export function AgentControlPanel() {
     fetchApi<GooglePlacesStatus>("/api/control/google-places/status")
       .then(setMapsStatus)
       .catch(() => setMapsStatus(null));
+    fetchApi<EnrichmentStatus>("/api/enrichment/status")
+      .then(setEnrichStatus)
+      .catch(() => setEnrichStatus(null));
     const id = setInterval(refreshStatus, 15000);
     return () => clearInterval(id);
   }, [refreshStatus]);
@@ -89,7 +99,7 @@ export function AgentControlPanel() {
         appendLog(result.message);
       } else {
         appendLog(
-          `Found ${result.saved ?? 0} leads. Pipelines: ${
+          `Found ${result.saved ?? 0} leads, ${result.emailsEnriched ?? 0} emails enriched. Pipelines: ${
             result.pipelines
               ?.map((p) =>
                 p.error
@@ -103,6 +113,24 @@ export function AgentControlPanel() {
       await refreshStatus();
     } catch (e) {
       appendLog(`Discover failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function enrichAllWithoutEmail() {
+    setLoading("enrich");
+    appendLog("Enriching leads without email (website → Apollo)…");
+    try {
+      const result = await postApi<{
+        ok: boolean;
+        enriched: number;
+        failed: number;
+      }>("/api/enrichment/batch", { allWithoutEmail: true, limit: 25 });
+      appendLog(`Enriched ${result.enriched} leads (${result.failed} errors)`);
+      await refreshStatus();
+    } catch (e) {
+      appendLog(`Enrichment failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setLoading(null);
     }
@@ -146,6 +174,12 @@ export function AgentControlPanel() {
               {mapsStatus.mockMode
                 ? "mock data (set GOOGLE_MAPS_API_KEY in .env)"
                 : "live Places API"}
+            </p>
+          )}
+          {enrichStatus && (
+            <p className="mt-1 text-xs text-slate-500">
+              Email enrichment: scrape {enrichStatus.websiteScrape ? "on" : "off"}
+              {enrichStatus.apollo ? " · Apollo connected" : " · Apollo not configured"}
             </p>
           )}
         </div>
@@ -222,6 +256,14 @@ export function AgentControlPanel() {
               className="rounded-lg border border-indigo-600 px-4 py-2 text-sm text-indigo-300 hover:bg-indigo-950 disabled:opacity-50"
             >
               Queue discover (worker)
+            </button>
+            <button
+              type="button"
+              disabled={!!loading}
+              onClick={enrichAllWithoutEmail}
+              className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+            >
+              {loading === "enrich" ? "Enriching…" : "Enrich missing emails"}
             </button>
             <button
               type="button"

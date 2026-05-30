@@ -103,6 +103,7 @@ export async function runDiscoverSync(
   return {
     discovered: result.metrics?.discovered ?? 0,
     saved: result.data?.leads?.length ?? 0,
+    emailsEnriched: result.metrics?.emailsEnriched ?? 0,
     leadIds: result.data?.leads ?? [],
     pipelines: pipelineResults,
   };

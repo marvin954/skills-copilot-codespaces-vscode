@@ -34,6 +34,26 @@ export function LeadsTable() {
     load();
   }, [load]);
 
+  async function enrichLead(leadId: string) {
+    setActionId(leadId);
+    setMessage(null);
+    try {
+      const result = await postApi<{ ok: boolean; email?: string; source: string }>(
+        `/api/enrichment/lead/${leadId}`
+      );
+      setMessage(
+        result.email
+          ? `Found ${result.email} (${result.source})`
+          : `No email found (${result.source})`
+      );
+      await load();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Enrich failed");
+    } finally {
+      setActionId(null);
+    }
+  }
+
   async function runPipeline(leadId: string) {
     setActionId(leadId);
     setMessage(null);
@@ -85,7 +105,7 @@ export function LeadsTable() {
               <th className="px-4 py-3">Company</th>
               <th className="px-4 py-3">Score</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Industry</th>
+              <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
@@ -107,18 +127,26 @@ export function LeadsTable() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-slate-400">{lead.status}</td>
-                <td className="px-4 py-3 text-slate-400">
-                  {lead.industry ?? "—"}
+                <td className="max-w-[140px] truncate px-4 py-3 text-slate-400">
+                  {lead.email ?? "—"}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       disabled={actionId === lead.id}
+                      onClick={() => enrichLead(lead.id)}
+                      className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                    >
+                      Enrich
+                    </button>
+                    <button
+                      type="button"
+                      disabled={actionId === lead.id}
                       onClick={() => runPipeline(lead.id)}
                       className="rounded bg-indigo-600/80 px-2 py-1 text-xs text-white hover:bg-indigo-500 disabled:opacity-50"
                     >
-                      {actionId === lead.id ? "…" : "Run pipeline"}
+                      {actionId === lead.id ? "…" : "Pipeline"}
                     </button>
                     <button
                       type="button"
