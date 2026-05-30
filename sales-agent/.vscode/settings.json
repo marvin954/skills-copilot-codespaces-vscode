@@ -1,0 +1,13 @@
+{
+  "remote.autoForwardPorts": true,
+  "remote.portsAttributes": {
+    "3000": {
+      "label": "Sales Agent Dashboard",
+      "onAutoForward": "notify"
+    },
+    "4000": {
+      "label": "Sales Agent API",
+      "onAutoForward": "silent"
+    }
+  }
+}
