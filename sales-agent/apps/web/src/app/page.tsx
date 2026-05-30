@@ -1,4 +1,5 @@
 import { fetchApi } from "@/lib/api";
+import { AgentControlPanel } from "@/components/AgentControlPanel";
 
 interface Metrics {
   leadsGenerated: number;
@@ -44,7 +45,8 @@ export default async function DashboardPage() {
     <div>
       <h1 className="mb-2 text-3xl font-bold">Sales Command Center</h1>
       <p className="mb-8 text-slate-400">
-        Autonomous pipeline for AI automation services — SMB B2B
+        Control autonomous agents — discover, research, score, and outreach SMB
+        leads for AI automation services
       </p>
 
       {error && (
@@ -65,18 +67,7 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <section className="mt-12 rounded-xl border border-slate-800 bg-slate-900 p-6">
-        <h2 className="mb-4 text-xl font-semibold">Autonomous workflow</h2>
-        <ol className="list-inside list-decimal space-y-2 text-slate-300">
-          <li>Lead found (Maps, LinkedIn, directories)</li>
-          <li>Research lead → pain, opportunity, angle</li>
-          <li>Score lead (0–100)</li>
-          <li>Personalized outreach (email / SMS / LinkedIn / voice)</li>
-          <li>Conversation AI + objection handling</li>
-          <li>Book meeting or close via Stripe</li>
-          <li>Onboard customer + upsell</li>
-        </ol>
-      </section>
+      <AgentControlPanel />
     </div>
   );
 }

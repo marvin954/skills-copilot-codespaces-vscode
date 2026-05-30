@@ -64,6 +64,41 @@ export async function runDiscoverAndPipeline(
   return result;
 }
 
+/** Discover leads and run full pipeline synchronously (no worker required). */
+export async function runDiscoverSync(
+  organizationId: string,
+  source: "GOOGLE_MAPS" | "LINKEDIN" | "WEBSITE_SCRAPE" | "DIRECTORY" | "SOCIAL",
+  query: string,
+  limit = 5
+) {
+  const finder = new LeadFinderAgent();
+  const result = await finder.run(
+    { organizationId },
+    { source, query, limit }
+  );
+
+  const pipelineResults: Array<{ leadId: string; score?: number; error?: string }> = [];
+
+  for (const leadId of result.data?.leads ?? []) {
+    try {
+      const pipeline = await runLeadPipeline({ organizationId, leadId });
+      pipelineResults.push({ leadId, score: pipeline.score });
+    } catch (err) {
+      pipelineResults.push({
+        leadId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return {
+    discovered: result.metrics?.discovered ?? 0,
+    saved: result.data?.leads?.length ?? 0,
+    leadIds: result.data?.leads ?? [],
+    pipelines: pipelineResults,
+  };
+}
+
 export async function runCloseAndOnboard(
   organizationId: string,
   leadId: string,

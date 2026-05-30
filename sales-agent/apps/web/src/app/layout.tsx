@@ -21,7 +21,7 @@ export default function RootLayout({
             </span>
             <div className="flex gap-6 text-sm text-slate-400">
               <a href="/" className="hover:text-white">
-                Dashboard
+                Control
               </a>
               <a href="/leads" className="hover:text-white">
                 Leads

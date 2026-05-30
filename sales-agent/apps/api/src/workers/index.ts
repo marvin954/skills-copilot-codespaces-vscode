@@ -7,7 +7,7 @@ import {
 import type { WorkflowJob } from "../workflows/orchestrator.js";
 import {
   runLeadPipeline,
-  runDiscoverAndPipeline,
+  runDiscoverSync,
   runCloseAndOnboard,
 } from "../workflows/orchestrator.js";
 
@@ -22,10 +22,11 @@ async function processWorkflow(job: Job<WorkflowJob>) {
       });
       break;
     case "discover":
-      await runDiscoverAndPipeline(
+      await runDiscoverSync(
         data.organizationId,
         data.source as "GOOGLE_MAPS",
-        data.query!
+        data.query!,
+        5
       );
       break;
     case "close_and_onboard":

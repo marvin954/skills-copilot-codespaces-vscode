@@ -1,19 +1,14 @@
 import { Router } from "express";
 import { prisma } from "@sales-agent/database";
 import { z } from "zod";
-import { runLeadPipeline, runDiscoverAndPipeline } from "../workflows/orchestrator.js";
+import { runLeadPipeline, runDiscoverSync } from "../workflows/orchestrator.js";
+import { getDefaultOrganizationId } from "../lib/org.js";
 
 export const leadsRouter = Router();
 
-const DEFAULT_ORG = async () => {
-  const org = await prisma.organization.findFirst({ where: { slug: "default" } });
-  if (!org) throw new Error("Run db:seed first");
-  return org.id;
-};
-
 leadsRouter.get("/", async (_req, res, next) => {
   try {
-    const orgId = await DEFAULT_ORG();
+    const orgId = await getDefaultOrganizationId();
     const leads = await prisma.lead.findMany({
       where: { organizationId: orgId },
       orderBy: { score: "desc" },
@@ -60,9 +55,9 @@ leadsRouter.post("/discover", async (req, res, next) => {
       })
       .parse(req.body);
 
-    const orgId = await DEFAULT_ORG();
-    const result = await runDiscoverAndPipeline(orgId, body.source, body.query);
-    res.status(202).json(result);
+    const orgId = await getDefaultOrganizationId();
+    const result = await runDiscoverSync(orgId, body.source, body.query, 5);
+    res.json({ ok: true, ...result });
   } catch (e) {
     next(e);
   }
@@ -70,7 +65,7 @@ leadsRouter.post("/discover", async (req, res, next) => {
 
 leadsRouter.post("/:id/pipeline", async (req, res, next) => {
   try {
-    const orgId = await DEFAULT_ORG();
+    const orgId = await getDefaultOrganizationId();
     const result = await runLeadPipeline({
       organizationId: orgId,
       leadId: req.params.id,

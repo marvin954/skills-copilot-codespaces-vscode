@@ -1,7 +1,6 @@
 /**
  * Server-side fetch on the VM uses the Express API directly.
- * Browser/client code should use /api-backend (Next.js rewrite) so one
- * forwarded port (3000) is enough when developing remotely.
+ * Browser/client code uses /api-backend (Next.js rewrite).
  */
 function getApiBase(): string {
   if (typeof window !== "undefined") {
@@ -12,6 +11,27 @@ function getApiBase(): string {
 
 export async function fetchApi<T>(path: string): Promise<T> {
   const res = await fetch(`${getApiBase()}${path}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`API ${res.status}: ${path}${text ? ` — ${text}` : ""}`);
+  }
   return res.json() as Promise<T>;
+}
+
+export async function postApi<T>(
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const res = await fetch(`${getApiBase()}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : "{}",
+  });
+  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) {
+    throw new Error(
+      (data as { error?: string }).error ?? `API ${res.status}: ${path}`
+    );
+  }
+  return data as T;
 }
