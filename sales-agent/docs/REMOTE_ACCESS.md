@@ -10,15 +10,19 @@
 
 The repo includes `.vscode/settings.json` to auto-forward port 3000.
 
-## Option 2: Public preview tunnel
+## Option 2: Public preview tunnel (Cloudflare)
 
-If port forwarding is unavailable, start a tunnel:
+The active URL is written to **`sales-agent/PUBLIC_URL.txt`** when a tunnel is running.
+
+Start or restart:
 
 ```bash
-npx localtunnel --port 3000
+/tmp/cloudflared tunnel --url http://127.0.0.1:3000
 ```
 
-Use the printed `https://....loca.lt` URL. You may need to click through a reminder page or enter the tunnel password shown in the terminal.
+Use the `https://....trycloudflare.com` URL (no password page; works from any browser).
+
+Legacy alternative: `npx localtunnel --port 3000` (may show a reminder/password page).
 
 ## Option 3: Run on your machine
 
