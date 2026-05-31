@@ -9,86 +9,232 @@
   Add your open source license, GitHub uses the MIT license.
 -->
 
-# Code with GitHub Copilot
+# 🏠 Parcel Research Tool
 
-_GitHub Copilot can help you code by offering autocomplete-style suggestions right in VS Code and Codespaces._
+A comprehensive real estate parcel research platform inspired by PropStream, featuring property search, filtering, comparable property analysis, deal calculators, and lead generation.
 
-</header>
+## Features
 
-<!--
-  <<< Author notes: Step 1 >>>
-  Choose 3-5 steps for your course.
-  The first step is always the hardest, so pick something easy!
-  Link to docs.github.com for further explanations.
-  Encourage users to open new tabs for steps!
--->
+- **Property Search & Database** - Search 160M+ properties nationwide
+- **Advanced Filtering** - 165+ filter options (price, location, property type, owner type, etc.)
+- **Comparable Properties (Comps)** - Analyze comparable properties and market trends
+- **Deal Analysis** - Calculate ROI, cash flow, maximum allowable offer (MAO)
+- **Lead Generation** - Generate targeted lead lists for different strategies (flip, rental, wholesale)
+- **Lead Management** - Manage, track, and export lead lists
 
-## Step 1: Leverage Codespaces with VS Code for Copilot
+## Architecture
 
-_Welcome to "Develop With AI Powered Code Suggestions Using GitHub Copilot and VS Code"! :wave:_
+```
+Frontend (React)          Backend (Node.js/Express)    Database
+   ↓                             ↓                         ↓
+React Components ←→ API Routes ←→ PostgreSQL + Redis
+  (Search UI)        (Routing)      (Parcel Data)
+```
 
-GitHub Copilot is an AI pair programmer that helps you write code faster and with less work. It draws context from comments and code to suggest individual lines and whole functions instantly. GitHub Copilot is powered by OpenAI Codex, a generative pretrained language model created by OpenAI.
+### Tech Stack
 
-**Copilot works with many code editors including VS Code, Visual Studio, JetBrains IDE, and Neovim.**
+- **Backend**: Node.js, Express.js
+- **Database**: PostgreSQL (properties, leads, analysis) + Redis (caching)
+- **Frontend**: React, TypeScript (in progress)
+- **External APIs**: Zillow, Redfin, Google Maps
+- **Authentication**: JWT (planned)
 
-Additionally, GitHub Copilot is trained on all languages that appear in public repositories. For each language, the quality of suggestions you receive may depend on the volume and diversity of training data for that language.
+## Project Structure
 
-Using Copilot inside a Codespace shows just how easy it is to get up and running with GitHub's suite of [Collaborative Coding](https://github.com/features#features-collaboration) tools.
+```
+parcel-research-tool/
+├── src/
+│   ├── server.js                 # Main Express app
+│   ├── config/
+│   │   ├── database.js          # PostgreSQL connection
+│   │   └── redis.js             # Redis client
+│   ├── middleware/
+│   │   ├── errorHandler.js
+│   │   └── requestLogger.js
+│   ├── routes/
+│   │   ├── properties.js        # Property endpoints
+│   │   ├── search.js            # Search & filtering
+│   │   ├── comps.js             # Comparable properties
+│   │   ├── calculator.js        # Deal calculations
+│   │   └── leads.js             # Lead management
+│   ├── models/
+│   │   ├── Property.js
+│   │   └── LeadList.js
+│   ├── services/               # Business logic
+│   ├── utils/                  # Helpers
+│   └── db/
+│       ├── schema.sql          # Database schema
+│       ├── migrations/
+│       └── seeds/
+├── frontend/                    # React app
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── services/
+│   └── public/
+├── package.json
+├── .env.example
+└── README.md
+```
 
-> **Note**
-> This skills exercise will focus on leveraging GitHub Codespace. It is recommended that you complete the GitHub skill, [Codespaces](https://github.com/skills/code-with-codespaces), before moving forward with this exercise.
+## Quick Start
 
-### :keyboard: Activity: Enable Copilot inside a Codespace
+### Prerequisites
+- Node.js 16+
+- PostgreSQL 12+
+- Redis 6+
 
-**We recommend opening another browser tab to work through the following activities so you can keep these instructions open for reference.**
+### Installation
 
-Before you open up a codespace on a repository, you can create a development container and define specific extensions or configurations that will be used or installed in your codespace. Let's create this development container and add copilot to the list of extensions.
-
-1. Navigating back to your **Code** tab of your repository, click the **Add file** drop-down button, and then click `Create new file`.
-1. Type or paste the following in the empty text field prompt to name your file.
+1. **Clone the repository**
+   ```bash
+   git clone <repo-url>
+   cd parcel-research-tool
    ```
-   .devcontainer/devcontainer.json
+
+2. **Install dependencies**
+   ```bash
+   npm install
    ```
-1. In the body of the new **.devcontainer/devcontainer.json** file, add the following content:
+
+3. **Configure environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your database, API keys, etc.
    ```
-   {
-       // Name this configuration
-       "name": "Codespace for Skills!",
-       "customizations": {
-           "vscode": {
-               "extensions": [
-                   "GitHub.copilot"
-               ]
-           }
-       }
-   }
+
+4. **Set up database**
+   ```bash
+   # Create database
+   createdb parcel_research
+   
+   # Load schema
+   psql parcel_research < src/db/schema.sql
    ```
-1. Select the option to **Commit directly to the `main` branch**, and then click the **Commit new file** button.
-1. Navigate back to the home page of your repository by clicking the **Code** tab located at the top left of the screen.
-1. Click the **Code** button located in the middle of the page.
-1. Click the **Codespaces** tab on the box that pops up.
-1. Click the **Create codespace on main** button.
 
-   **Wait about 2 minutes for the codespace to spin itself up.**
+5. **Start the server**
+   ```bash
+   npm run dev
+   ```
 
-1. Verify your codespace is running. The browser should contain a VS Code web-based editor and a terminal should be present such as the below:
-   ![Screen Shot 2023-03-09 at 9 09 07 AM](https://user-images.githubusercontent.com/26442605/224102962-d0222578-3f10-4566-856d-8d59f28fcf2e.png)
-1. The `copilot` extension should show up in the VS Code extension list. Click the extensions sidebar tab. You should see the following:
-   ![Screen Shot 2023-03-09 at 9 04 13 AM](https://user-images.githubusercontent.com/26442605/224102514-7d6d2f51-f435-401d-a529-7bae3ae3e511.png)
+Server runs on `http://localhost:5000`
 
-**Wait about 60 seconds then refresh your repository landing page for the next step.**
+## API Endpoints
 
-<footer>
+### Properties
+- `GET /api/properties/:id` - Get property details
+- `GET /api/properties` - List properties with pagination
 
-<!--
-  <<< Author notes: Footer >>>
-  Add a link to get support, GitHub status page, code of conduct, license link.
--->
+### Search
+- `POST /api/search` - Advanced property search with filters
+- `POST /api/search/leads` - Generate lead list
 
----
+### Comps
+- `GET /api/comps/:propertyId` - Find comparable properties
 
-Get help: [Post in our discussion board](https://github.com/orgs/skills/discussions/categories/code-with-copilot) &bull; [Review the GitHub status page](https://www.githubstatus.com/)
+### Calculator
+- `POST /api/calculator/roi` - Calculate ROI
+- `POST /api/calculator/cashflow` - Calculate monthly cash flow
+- `POST /api/calculator/mao` - Calculate Maximum Allowable Offer
 
-&copy; 2023 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
+### Leads
+- `GET /api/leads` - Get saved lead lists
+- `POST /api/leads` - Create lead list
+- `POST /api/leads/:id/export` - Export leads (CSV/JSON)
+- `DELETE /api/leads/:id` - Delete lead list
 
-</footer>
+## Database Schema
+
+### Core Tables
+- **properties** - Parcel data (address, owner, tax value, comps, etc.)
+- **users** - User accounts and authentication
+- **lead_lists** - Saved lead searches and criteria
+- **lead_list_items** - Properties in each lead list
+- **deal_analysis** - ROI, cash flow, deal analysis
+- **comps** - Comparable property relationships
+- **market_data_cache** - Cached market trends
+- **api_logs** - Activity tracking
+
+See `src/db/schema.sql` for full schema documentation.
+
+## Development
+
+### Running Tests
+```bash
+npm test
+```
+
+### Database Migrations
+```bash
+npm run migrate:latest
+npm run migrate:rollback
+```
+
+### Adding New Features
+1. Create model in `src/models/`
+2. Create service in `src/services/`
+3. Create routes in `src/routes/`
+4. Update database schema if needed
+5. Add tests
+
+## API Integration Status
+
+- ✅ Local database structure
+- ⏳ Zillow API integration (in progress)
+- ⏳ Redfin API integration (planned)
+- ⏳ County assessor data (planned)
+- ⏳ Skip tracing service (planned)
+- ⏳ GPT integration for AI assistant (planned)
+
+## Roadmap
+
+**Phase 1: Architecture** ✅
+- [x] Project structure
+- [x] Database schema
+- [x] API scaffolding
+
+**Phase 2: Core Features** 🔄
+- [ ] Property search implementation
+- [ ] Basic filtering engine
+- [ ] Comps analyzer
+- [ ] Deal calculator (stub routes exist)
+- [ ] Lead export
+
+**Phase 3: Data Integration**
+- [ ] Zillow API connector
+- [ ] Redfin data sync
+- [ ] County assessor integration
+- [ ] Skip tracing service
+
+**Phase 4: Frontend** (Planned)
+- [ ] React UI components
+- [ ] Search interface
+- [ ] Lead list builder
+- [ ] Deal analyzer
+
+## Configuration
+
+See `.env.example` for all available configuration options:
+- Database credentials
+- API keys (Zillow, Google Maps, etc.)
+- Redis connection
+- Server port
+- Log level
+
+## Contributing
+
+Contributions welcome! Please:
+1. Create a feature branch
+2. Make your changes
+3. Add tests
+4. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file
+
+## Support
+
+For issues, questions, or suggestions:
+- GitHub Issues: [Create an issue](https://github.com/yourusername/parcel-research-tool/issues)
+- Discussions: [Ask a question](https://github.com/yourusername/parcel-research-tool/discussions)

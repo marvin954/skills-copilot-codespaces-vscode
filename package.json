@@ -1,16 +1,32 @@
 {
-  "name": "trading-ai-agent",
+  "name": "parcel-research-tool",
   "version": "1.0.0",
-  "description": "A paper-trading AI agent with risk controls and a CLI runner.",
-  "main": "src/index.js",
+  "description": "A real estate parcel research tool inspired by PropStream with search, filtering, comps analysis, and deal calculators.",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node src/index.js --demo",
-    "test": "node --test"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node --test",
+    "db:setup": "node src/db/setup.js",
+    "db:migrate": "node src/db/enrichAppraiser.js",
+    "db:seed": "node src/db/seed.js"
   },
-  "keywords": [
-    "trading",
-    "ai-agent",
-    "paper-trading"
-  ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.10.0",
+    "redis": "^4.6.7",
+    "dotenv": "^16.3.1",
+    "axios": "^1.5.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "joi": "^17.11.0",
+    "uuid": "^9.0.1",
+    "knex": "^3.1.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
 }

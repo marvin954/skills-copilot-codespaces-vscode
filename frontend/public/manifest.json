@@ -1,0 +1,11 @@
+{
+  "short_name": "Parcel Research",
+  "name": "Parcel Research — Investor Lookup",
+  "description": "Look up Florida property owner and tax records on the go.",
+  "start_url": "/search",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "orientation": "portrait-primary",
+  "icons": []
+}
