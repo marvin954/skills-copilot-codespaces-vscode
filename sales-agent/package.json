@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "setup": "bash scripts/setup.sh",
     "dev": "npm run dev --workspace=@sales-agent/api & npm run dev --workspace=@sales-agent/web",
     "dev:api": "npm run dev --workspace=@sales-agent/api",
     "dev:web": "npm run dev --workspace=@sales-agent/web",

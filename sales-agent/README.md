@@ -8,15 +8,23 @@ This project lives in its own folder so it stays separate from other agents in t
 
 ```bash
 cd sales-agent
+npm run setup      # installs deps, Postgres schema, seed data, runs tests
+```
+
+Or manually:
+
+```bash
+cd sales-agent
 cp .env.example .env
-docker compose up -d
+docker compose up -d   # optional if you have Docker
 npm install
-npm run db:push
-npm run db:seed
+npm run db:push && npm run db:seed
 npm run dev:api    # terminal 1
-npm run worker     # terminal 2
+npm run worker     # terminal 2 (optional)
 npm run dev:web    # terminal 3
 ```
+
+Add API keys to `.env` — see [GOOGLE_MAPS_SETUP](./docs/GOOGLE_MAPS_SETUP.md) and [EMAIL_ENRICHMENT](./docs/EMAIL_ENRICHMENT.md).
 
 - **API:** http://localhost:4000  
 - **Dashboard:** http://localhost:3000  
