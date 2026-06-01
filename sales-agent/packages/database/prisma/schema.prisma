@@ -1,0 +1,449 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Organization & config ───────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  playbooks   Playbook[]
+  leads       Lead[]
+  campaigns   Campaign[]
+  deals       Deal[]
+  agentRuns   AgentRun[]
+  reports     ManagerReport[]
+}
+
+model User {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  name           String?
+  role           UserRole     @default(OPERATOR)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, email])
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+// ─── Sales playbooks ───────────────────────────────────────────────────────────
+
+model Playbook {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slug           String
+  name           String
+  industry       String?
+  productSummary String       @db.Text
+  pricingTiers   Json         @default("[]")
+  objectionRules Json         @default("[]")
+  pitchAngles    Json         @default("[]")
+  negotiationMax Json         @default("{}")
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  leads     Lead[]
+  campaigns Campaign[]
+
+  @@unique([organizationId, slug])
+}
+
+// ─── CRM: Leads & contacts ─────────────────────────────────────────────────────
+
+model Lead {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  playbookId     String?
+  playbook       Playbook?    @relation(fields: [playbookId], references: [id])
+  status         LeadStatus   @default(NEW)
+  source         LeadSource
+  companyName    String
+  website        String?
+  email          String?
+  phone          String?
+  industry       String?
+  employeeCount  Int?
+  location       String?
+  revenueBand    String?
+  techStack      String[]     @default([])
+  metadata       Json         @default("{}")
+  score          Int          @default(0)
+  scoreBreakdown Json         @default("{}")
+  research       LeadResearch?
+  contacts       Contact[]
+  conversations  Conversation[]
+  outreachEvents OutreachEvent[]
+  meetings       Meeting[]
+  deals          Deal[]
+  optOut         Boolean      @default(false)
+  optOutAt       DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, status])
+  @@index([organizationId, score])
+  @@index([email])
+}
+
+enum LeadStatus {
+  NEW
+  RESEARCHING
+  SCORED
+  OUTREACH_QUEUED
+  CONTACTED
+  ENGAGED
+  MEETING_BOOKED
+  NEGOTIATING
+  WON
+  LOST
+  NURTURING
+  OPTED_OUT
+}
+
+enum LeadSource {
+  GOOGLE_MAPS
+  LINKEDIN
+  WEBSITE_SCRAPE
+  DIRECTORY
+  SOCIAL
+  MANUAL
+  IMPORT
+  REFERRAL
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  name      String
+  title     String?
+  email     String?
+  phone     String?
+  linkedin  String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId])
+}
+
+model LeadResearch {
+  id                  String   @id @default(cuid())
+  leadId              String   @unique
+  lead                Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  painSummary         String   @db.Text
+  opportunitySummary  String   @db.Text
+  salesAngle          String   @db.Text
+  estimatedValue      Decimal? @db.Decimal(12, 2)
+  competitorNotes     String?  @db.Text
+  websiteAnalysis     Json     @default("{}")
+  personalizedPitch   String?  @db.Text
+  researchedAt        DateTime @default(now())
+}
+
+// ─── Outreach & conversations ────────────────────────────────────────────────
+
+model Campaign {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  playbookId     String?
+  playbook       Playbook?      @relation(fields: [playbookId], references: [id])
+  name           String
+  channel        OutreachChannel
+  status         CampaignStatus @default(DRAFT)
+  sequenceSteps  Json           @default("[]")
+  stats          Json           @default("{}")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  outreachEvents OutreachEvent[]
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum OutreachChannel {
+  EMAIL
+  SMS
+  LINKEDIN
+  VOICE
+}
+
+model OutreachEvent {
+  id           String          @id @default(cuid())
+  leadId       String
+  lead         Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  campaignId   String?
+  campaign     Campaign?       @relation(fields: [campaignId], references: [id])
+  channel      OutreachChannel
+  direction    MessageDirection
+  subject      String?
+  body         String          @db.Text
+  externalId   String?
+  status       OutreachStatus  @default(QUEUED)
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  repliedAt    DateTime?
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  metadata     Json            @default("{}")
+  createdAt    DateTime        @default(now())
+
+  @@index([leadId, channel])
+  @@index([status, scheduledFor])
+}
+
+enum MessageDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum OutreachStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  REPLIED
+  BOUNCED
+  FAILED
+  OPTED_OUT
+}
+
+model Conversation {
+  id        String             @id @default(cuid())
+  leadId    String
+  lead      Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  channel   OutreachChannel
+  state     ConversationState  @default(ACTIVE)
+  intent    String?
+  memory    Json               @default("[]")
+  summary   String?            @db.Text
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  messages ConversationMessage[]
+
+  @@index([leadId, channel])
+}
+
+enum ConversationState {
+  ACTIVE
+  AWAITING_REPLY
+  CLOSED
+  HANDOFF_HUMAN
+}
+
+model ConversationMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String           @db.Text
+  metadata       Json             @default("{}")
+  createdAt      DateTime         @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+enum MessageRole {
+  SYSTEM
+  ASSISTANT
+  USER
+  TOOL
+}
+
+// ─── Meetings & deals ──────────────────────────────────────────────────────────
+
+model Meeting {
+  id          String        @id @default(cuid())
+  leadId      String
+  lead        Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title       String
+  scheduledAt DateTime
+  durationMin Int           @default(30)
+  meetingUrl  String?
+  status      MeetingStatus @default(SCHEDULED)
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+}
+
+model Deal {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId         String
+  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title          String
+  stage          DealStage    @default(PROPOSAL)
+  amount         Decimal      @db.Decimal(12, 2)
+  currency       String       @default("USD")
+  stripeSessionId String?
+  stripePaymentId String?
+  contractUrl    String?
+  signedAt       DateTime?
+  closedAt       DateTime?
+  lostReason     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  onboarding Onboarding?
+}
+
+enum DealStage {
+  PROPOSAL
+  NEGOTIATION
+  CHECKOUT
+  PAYMENT_PENDING
+  WON
+  LOST
+}
+
+model Onboarding {
+  id           String           @id @default(cuid())
+  dealId       String           @unique
+  deal         Deal             @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  status       OnboardingStatus @default(PENDING)
+  accountId    String?
+  welcomeSent  Boolean          @default(false)
+  scheduledAt  DateTime?
+  completedAt  DateTime?
+  checklist    Json             @default("[]")
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+enum OnboardingStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ─── Compliance & audit ────────────────────────────────────────────────────────
+
+model ComplianceLog {
+  id        String   @id @default(cuid())
+  leadId    String?
+  channel   String
+  action    String
+  details   Json     @default("{}")
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+model OptOut {
+  id        String   @id @default(cuid())
+  email     String?
+  phone     String?
+  channel   String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([phone])
+}
+
+// ─── Agent orchestration ───────────────────────────────────────────────────────
+
+model AgentRun {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentType      AgentType
+  status         AgentRunStatus @default(PENDING)
+  input          Json         @default("{}")
+  output         Json         @default("{}")
+  error          String?      @db.Text
+  leadId         String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, agentType, status])
+  @@index([leadId])
+}
+
+enum AgentType {
+  LEAD_FINDER
+  LEAD_RESEARCH
+  LEAD_SCORING
+  EMAIL
+  SMS
+  LINKEDIN
+  VOICE
+  CRM
+  CLOSING
+  ONBOARDING
+  MANAGER
+  CONVERSATION
+}
+
+enum AgentRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model ManagerReport {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  periodStart    DateTime
+  periodEnd      DateTime
+  metrics        Json
+  recommendations Json        @default("[]")
+  createdAt      DateTime     @default(now())
+}
+
+// ─── Webhooks & integrations ───────────────────────────────────────────────────
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventType   String
+  payload     Json
+  processed   Boolean  @default(false)
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([provider, processed])
+}

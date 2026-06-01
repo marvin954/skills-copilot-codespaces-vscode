@@ -1,0 +1,27 @@
+{
+  "name": "autonomous-sales-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "24/7 autonomous AI SaaS sales agent — lead gen, outreach, closing, onboarding",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "dev": "npm run dev --workspace=@sales-agent/api & npm run dev --workspace=@sales-agent/web",
+    "dev:api": "npm run dev --workspace=@sales-agent/api",
+    "dev:web": "npm run dev --workspace=@sales-agent/web",
+    "build": "npm run build --workspaces --if-present",
+    "db:generate": "npm run generate --workspace=@sales-agent/database",
+    "db:migrate": "npm run migrate --workspace=@sales-agent/database",
+    "db:push": "npm run push --workspace=@sales-agent/database",
+    "db:seed": "npm run seed --workspace=@sales-agent/database",
+    "worker": "npm run worker --workspace=@sales-agent/api",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
