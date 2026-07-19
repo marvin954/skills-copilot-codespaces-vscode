@@ -2,7 +2,7 @@
 
 Production-ready, multi-agent B2B sales system for **AI Automation Services**, **AI Call Centers**, **AI Chatbots**, **Lead Generation Systems**, and **Business Automation Solutions** — optimized for SMB outreach (5–200 employees).
 
-This project lives in its own folder so it stays separate from other agents in the repository (e.g. the trading agent at the repo root).
+This project lives in its own folder so it stays separate from other agents in the repository (e.g. the trading agent in the [`trading-agent/`](../trading-agent/) folder).
 
 ## Quick start
 
